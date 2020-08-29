@@ -1,0 +1,24 @@
+spring.application.name: voc-meeting-service
+
+server.port: 8081
+
+management.server.port: 8082
+
+spring.data.cassandra:
+  keyspace-name: default
+  contact-points: 127.0.0.1
+  local-datacenter: DC1
+  port: 9042
+#  username:
+#  password:
+  # Create the schema on the fly if it doesn't exist
+  schema-action: CREATE_IF_NOT_EXISTS
+  # Increase timeouts when connecting to CASSANDRA from a dev workstation
+  request:
+    timeout: 10s
+  connection:
+    connect-timeout: 10s
+    init-query-timeout: 10s
+
+#datastax.CASSANDRA:
+#  secure-connect-bundle: ${CASSANDRA_DB_BUNDLE}
