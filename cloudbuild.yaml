@@ -1,0 +1,170 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    id: build-meeting
+    args:
+      - 'build'
+      - '--no-cache'
+      - '--file=./Dockerfile'
+      - '-t'
+      - 'eu.gcr.io/$PROJECT_ID/voc-meeting:$SHORT_SHA'
+      - '-t'
+      - 'eu.gcr.io/$PROJECT_ID/voc-meeting:latest'
+      - '.'
+
+  # This step pushes the image to Container Registry
+  # The PROJECT_ID and SHORT_SHA variables are automatically
+  # replaced by Cloud Build.
+  - name: 'gcr.io/cloud-builders/docker'
+    id: push-meeting
+    args:
+      - 'push'
+      - 'eu.gcr.io/$PROJECT_ID/voc-meeting:$SHORT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: push-meeting-latest
+    args:
+      - 'push'
+      - 'eu.gcr.io/$PROJECT_ID/voc-meeting:latest'
+
+  - name: 'gcr.io/cloud-builders/kubectl'
+    id: deploy-meeting-latest
+    args:
+      - 'set'
+      - 'image'
+      - 'deployment/meeting-deployment'
+      - 'meeting=eu.gcr.io/$PROJECT_ID/voc-meeting:$SHORT_SHA'
+    env:
+      - 'CLOUDSDK_COMPUTE_ZONE=europe-north1-c'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=voc-cluster-1'
+
+  # Access the id_github file from Secret Manager
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: 'bash'
+    args: [ '-c', 'gcloud secrets versions access latest --secret=voc-github > /root/.ssh/id_github' ]
+    volumes:
+      - name: 'ssh'
+        path: /root/.ssh
+  # Set up git with key and domain
+  - name: 'gcr.io/cloud-builders/git'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        chmod 600 /root/.ssh/id_github
+        cat <<EOF >/root/.ssh/config
+        Hostname github.com
+        IdentityFile /root/.ssh/id_github
+        EOF
+        ssh-keyscan -t rsa github.com > /root/.ssh/known_hosts
+    volumes:
+      - name: 'ssh'
+        path: /root/.ssh
+  # Connect to the repository
+  - name: 'gcr.io/cloud-builders/git'
+    dir: persistent_volume
+    args:
+      - clone
+      - git@github.com:vote-of-confidence/meeting-env.git
+    volumes:
+      - name: 'ssh'
+        path: /root/.ssh
+      - name: 'vol1'
+        path: '/workspace/persistent_volume'
+
+  # [START cloudbuild-trigger-cd]
+  # This step clones the meeting-env repository
+  - name: 'gcr.io/cloud-builders/git'
+    id: clone_env_repository
+    volumes:
+      - name: 'vol1'
+        path: '/workspace/persistent_volume'
+    entrypoint: 'bash'
+    env: ['GIT_DISCOVERY_ACROSS_FILESYSTEM=1']
+    args:
+      - '-c'
+      - |
+        cd /workspace/persistent_volume/meeting-env && \
+        git checkout candidate && \
+        git config user.email $(gcloud auth list --filter=status:ACTIVE --format='value(account)') && \
+        ls -a  && \
+        pwd
+
+  - # Verify kustomize has been built correctly
+    name: "gcr.io/$PROJECT_ID/kustomize"
+    entrypoint: "kustomize"
+    args: ["version"]
+
+
+  - name: 'gcr.io/$PROJECT_ID/kustomize'
+    id: kustomize
+    volumes:
+      - name: 'vol1'
+        path: '/workspace/persistent_volume'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        cd /workspace/persistent_volume/meeting-env && \
+        gcloud container clusters get-credentials --zone "$$CLOUDSDK_COMPUTE_ZONE" "$$CLOUDSDK_CONTAINER_CLUSTER" && \
+        kustomize build . > kusto.yaml && \
+        cat kusto.yaml
+
+    env:
+      - 'CLOUDSDK_COMPUTE_ZONE=europe-north1-c'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=voc-cluster-1'
+
+  # This step generates the new manifest
+  - name: 'gcr.io/cloud-builders/git'
+    id:  generate_manifest
+    volumes:
+      - name: 'vol1'
+        path: '/workspace/persistent_volume'
+    entrypoint: 'bash'
+    env: ['GIT_DISCOVERY_ACROSS_FILESYSTEM=1']
+    args:
+      - '-c'
+      - |
+        cd /workspace/persistent_volume/meeting-env && \
+        ls -a && \
+        pwd && \
+        sed "s/GOOGLE_CLOUD_PROJECT/${PROJECT_ID}/g" kusto.yaml | \
+        sed "s/COMMIT_SHA/${SHORT_SHA}/g" > /workspace/persistent_volume/meeting-env/kubernetes.yaml && \
+        cat /workspace/persistent_volume/meeting-env/kubernetes.yaml
+
+  # This step pushes the manifest back to meeting-env push_manifest
+  - name: 'gcr.io/cloud-builders/git'
+    id:  prepare_manifest
+    volumes:
+      - name: 'vol1'
+        path: '/workspace/persistent_volume'
+      - name: 'ssh'
+        path: /root/.ssh
+    entrypoint: 'bash'
+    env: ['GIT_DISCOVERY_ACROSS_FILESYSTEM=1']
+    args:
+      - '-c'
+      - |
+        cd /workspace/persistent_volume/meeting-env && \
+        set -x && \
+        git config user.email $(gcloud auth list --filter=status:ACTIVE --format='value(account)') && \
+        git add kubernetes.yaml && \
+        git commit -m "Deploying image eu.gcr.io/$PROJECT_ID/voc-meeting:${SHORT_SHA}
+        Built from commit ${COMMIT_SHA} of repository meeting
+        Author: $(git log --format='%an <%ae>' -n 1 HEAD)"
+
+  - name: 'gcr.io/cloud-builders/git'
+    dir: /workspace/persistent_volume/meeting-env
+    env: ['GIT_DISCOVERY_ACROSS_FILESYSTEM=1']
+    args:
+      - push
+      - origin
+      - candidate
+    volumes:
+      - name: 'ssh'
+        path: /root/.ssh
+      - name: 'vol1'
+        path: '/workspace/persistent_volume'
+# [END cloudbuild-trigger-cd]
+images:
+  - 'eu.gcr.io/$PROJECT_ID/voc-meeting:latest'
+timeout: '1800s'
