@@ -2,10 +2,10 @@ FROM alpine/git as clone
 WORKDIR /app
 RUN git clone https://github.com/vote-of-confidence/meeting.git
 
-FROM maven:3.5.2-jdk-8-alpine AS maven
+FROM maven:3.6-openjdk-11 AS maven
 COPY --from=clone /app/meeting/ /tmp/
 WORKDIR /tmp/
-RUN mvn -T 1C clean package -DskipTests=true -q
+RUN mvn clean package -q
 RUN find /tmp/meeting/target/ -name '*jar' -exec bash -c 'mv $0 app.jar' {} \;
 ENTRYPOINT /tmp
 
