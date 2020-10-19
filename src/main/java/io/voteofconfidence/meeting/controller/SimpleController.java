@@ -1,6 +1,9 @@
 package io.voteofconfidence.meeting.controller;
 
+import io.minio.GetObjectArgs;
+import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.errors.*;
 import io.voteofconfidence.meeting.service.FileUploader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -10,6 +13,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 
 @RestController
 @RequestMapping("test")
@@ -18,8 +25,11 @@ public class SimpleController {
     @Autowired
     FileUploader fileUploader;
 
+    @Autowired
+    MinioClient minioClient;
+
     @GetMapping(value = "/hello", produces = MediaType.APPLICATION_JSON_VALUE)
-    public void getBook() throws IOException {
+    public void getBook() throws IOException, InvalidKeyException, InvalidResponseException, InsufficientDataException, NoSuchAlgorithmException, ServerException, InternalException, XmlParserException, InvalidBucketNameException, ErrorResponseException {
         StringBuilder builder = new StringBuilder();
         for (int i = 0; i < 10; i++) {
             builder.append(
@@ -57,6 +67,21 @@ public class SimpleController {
                             .build());
             bais.close();
             System.out.println("my-objectname is uploaded successfully");
+
+
+            InputStream stream =
+                    minioClient.getObject(
+                            GetObjectArgs.builder().bucket("my-bucketname").object("my-objectname").build());
+
+            // Read the input stream and print to the console till EOF.
+            byte[] buf = new byte[16384];
+            int bytesRead;
+            while ((bytesRead = stream.read(buf, 0, buf.length)) >= 0) {
+                System.out.println(new String(buf, 0, bytesRead, StandardCharsets.UTF_8));
+            }
+
+            // Close the input stream.
+            stream.close();
         }
 
     }
