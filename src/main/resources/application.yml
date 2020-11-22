@@ -1,0 +1,18 @@
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          custom:
+            client-id: -----------
+            client-secret: ------------
+            scopes: default
+            authorization-grant-type: authorization_code
+            redirect-uri-template: https://xn--b1aaffpuncuol5m.xn--p1ai/meeting/auth/calendly_oauth2/callback
+            redirect-uri: https://xn--b1aaffpuncuol5m.xn--p1ai/meeting/auth/calendly_oauth2/callback
+        provider:
+          custom:
+            authorization-uri: https://auth.calendly.com/oauth/authorize
+            token-uri: https://auth.calendly.com/oauth/token
+            user-info-uri: https://api.calendly.com/users/me
+            user-name-attribute: owner

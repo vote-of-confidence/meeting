@@ -1,4 +1,0 @@
-#TODO: move to configmap
-endpoint: http://192.168.0.121:9000
-accessKey: minioadmin
-secretKey: minioadmin
