@@ -40,7 +40,7 @@ steps:
   # Access the id_github file from Secret Manager
   - name: gcr.io/cloud-builders/gcloud
     entrypoint: 'bash'
-    args: [ '-c', 'gcloud secrets versions access latest --secret=voc-github > /root/.ssh/voc-github-meeting' ]
+    args: [ '-c', 'gcloud secrets versions access latest --secret=voc-github-meeting > /root/.ssh/id_github' ]
     volumes:
       - name: 'ssh'
         path: /root/.ssh
