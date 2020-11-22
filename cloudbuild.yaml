@@ -6,9 +6,9 @@ steps:
       - '--no-cache'
       - '--file=./Dockerfile'
       - '-t'
-      - 'eu.gcr.io/$PROJECT_ID/voc-meeting:$SHORT_SHA'
+      - 'eu.gcr.io/$PROJECT_ID/meeting:$SHORT_SHA'
       - '-t'
-      - 'eu.gcr.io/$PROJECT_ID/voc-meeting:latest'
+      - 'eu.gcr.io/$PROJECT_ID/meeting:latest'
       - '.'
 
   # This step pushes the image to Container Registry
@@ -18,13 +18,13 @@ steps:
     id: push-meeting
     args:
       - 'push'
-      - 'eu.gcr.io/$PROJECT_ID/voc-meeting:$SHORT_SHA'
+      - 'eu.gcr.io/$PROJECT_ID/meeting:$SHORT_SHA'
 
   - name: 'gcr.io/cloud-builders/docker'
     id: push-meeting-latest
     args:
       - 'push'
-      - 'eu.gcr.io/$PROJECT_ID/voc-meeting:latest'
+      - 'eu.gcr.io/$PROJECT_ID/meeting:latest'
 
   - name: 'gcr.io/cloud-builders/kubectl'
     id: deploy-meeting-latest
@@ -32,7 +32,7 @@ steps:
       - 'set'
       - 'image'
       - 'deployment/meeting-deployment'
-      - 'meeting=eu.gcr.io/$PROJECT_ID/voc-meeting:$SHORT_SHA'
+      - 'meeting=eu.gcr.io/$PROJECT_ID/meeting:$SHORT_SHA'
     env:
       - 'CLOUDSDK_COMPUTE_ZONE=europe-north1-c'
       - 'CLOUDSDK_CONTAINER_CLUSTER=voc-cluster-1'
@@ -148,7 +148,7 @@ steps:
         set -x && \
         git config user.email $(gcloud auth list --filter=status:ACTIVE --format='value(account)') && \
         git add kubernetes.yaml && \
-        git commit -m "Deploying image eu.gcr.io/$PROJECT_ID/voc-meeting:${SHORT_SHA}
+        git commit -m "Deploying image eu.gcr.io/$PROJECT_ID/meeting:${SHORT_SHA}
         Built from commit ${COMMIT_SHA} of repository meeting
         Author: $(git log --format='%an <%ae>' -n 1 HEAD)"
 
@@ -166,5 +166,5 @@ steps:
         path: '/workspace/persistent_volume'
 # [END cloudbuild-trigger-cd]
 images:
-  - 'eu.gcr.io/$PROJECT_ID/voc-meeting:latest'
+  - 'eu.gcr.io/$PROJECT_ID/meeting:latest'
 timeout: '1800s'
