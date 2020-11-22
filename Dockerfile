@@ -6,7 +6,7 @@ FROM maven:3.6-openjdk-11 AS maven
 COPY --from=clone /app/meeting/ /tmp/
 WORKDIR /tmp/
 RUN mvn clean package -q
-RUN find /tmp/meeting/target/ -name '*jar' -exec bash -c 'mv $0 app.jar' {} \;
+RUN find /tmp/target/ -name '*jar' -exec bash -c 'mv $0 app.jar' {} \;
 ENTRYPOINT /tmp
 
 FROM openjdk:11-slim
