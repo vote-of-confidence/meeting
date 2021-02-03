@@ -1,18 +1,55 @@
+camunda:
+  admin-user:
+    id: ${CAMUNDA_USER}
+    password: ${CAMUNDA_PASSWORD}
+  bpm:
+    history-level: full
+    generic-properties:
+      properties:
+        historyCleanupBatchWindowStartTime: "00:01"
+        historyCleanupBatchWindowEndTime: "23:59"
+        historyCleanupStrategy: endTimeBased
+    database:
+      type: postgres
+      schema-update: false
 spring:
+  application:
+    name: "meetnig"
+  main:
+    allow-bean-definition-overriding: true
+  datasource:
+    hikari:
+      connection-test-query: SELECT 1
+      minimum-idle: 1
+      maximum-pool-size: 20
+      pool-name: springHikariCP
+      auto-commit: false
+      jdbc-url: ${MEETINGDB_URL}
+      username: ${MEETINGDB_USER}
+      password: ${MEETINGDB_PASSWORD}
+      driver-class-name: org.postgresql.ds.PGSimpleDataSource
+    url: ${MEETINGDB_URL}
+    username: ${MEETINGDB_USER}
+    password: ${MEETINGDB_PASSWORD}
+  liquibase:
+    changeLog: classpath:/db/changelog/db.changelog-master.xml
+    url: ${MEETINGDB_URL}
+    user: ${MEETINGDB_USER}
+    password: ${MEETINGDB_PASSWORD}
+    enabled: true
+    default-schema: ${MEETINGDB_SCHEMA}
+    liquibase-schema: ${MEETINGDB_SCHEMA}
+security:
+  basic:
+    enabled: false
+management:
   security:
-    oauth2:
-      client:
-        registration:
-          custom:
-            client-id: -----------
-            client-secret: ------------
-            scopes: default
-            authorization-grant-type: authorization_code
-            redirect-uri-template: https://xn--b1aaffpuncuol5m.xn--p1ai/meeting/auth/calendly_oauth2/callback
-            redirect-uri: https://xn--b1aaffpuncuol5m.xn--p1ai/meeting/auth/calendly_oauth2/callback
-        provider:
-          custom:
-            authorization-uri: https://auth.calendly.com/oauth/authorize
-            token-uri: https://auth.calendly.com/oauth/token
-            user-info-uri: https://api.calendly.com/users/me
-            user-name-attribute: owner
+    enabled: false
+logging:
+  level:
+    root: DEBUG
+    ru.st.com: TRACE
+    org.springframework: DEBUG
+    org.camunda.bpm.springboot: DEBUG
+    org.liquibase: DEBUG
+    com.zaxxer: ERROR
